@@ -65,6 +65,8 @@ class Config:
 
 
 class Menu:
+
+    running: ClassVar[bool] = True
     
     def __init__(self) -> None:
         self.options: dict[int, str] = {
@@ -81,8 +83,7 @@ class Menu:
             4: self.find,
             0: self.exit
         }
-        self.running: bool = True
-
+        
     def __repr__(self) -> str:
         return str(int(self.running))
 
@@ -202,11 +203,11 @@ class Menu:
                         print("Not a valid option!")
             else:
                 raise NotAnOption("", "")
-            
 
-    def exit(self):
+    @classmethod
+    def exit(cls):
         Room.save()
-        self.running = False
+        cls.running = False
 
 
 class Room:
@@ -224,19 +225,51 @@ class Room:
 
     @classmethod
     def load(cls) -> None:
-        with open(Config.BOOKINGS_FILE, "r", newline=Config.NEWLINE) as file:
-            reader = csv.DictReader(file, delimiter=Config.DELIMITER)
-            for row in reader:
-                cls.rooms[row["room_no"]] = Room(row["room_no"], row["building"], int(row["capacity"]), cls.split(row["booked_hours"]))
+        while True:
+            try:
+                with open(Config.BOOKINGS_FILE, "r", newline=Config.NEWLINE) as file:
+                    reader = csv.DictReader(file, delimiter=Config.DELIMITER)
+                    for row in reader:
+                        cls.rooms[row["room_no"]] = Room(row["room_no"], row["building"], int(row["capacity"]), cls.split(row["booked_hours"]))
+                break
+            except FileNotFoundError:
+                print(f'Error: {Config.BOOKINGS_FILE} not found')
+            except (ValueError, csv.Error, KeyError):
+                print(f'Error: Data format error in {Config.BOOKINGS_FILE}')
+            except (IOError, Exception):
+                print(f'Error: Problem loading {Config.BOOKINGS_FILE}')
+            finally:
+                choice: str = input("Press ENTER to abort...\nEnter text to retry: ")
+                if choice == "":
+                    Menu.running = False
+                    break
+                else:
+                    continue
 
     @classmethod
     def save(cls) -> None:
-        with open(Config.BOOKINGS_FILE, "w", newline=Config.NEWLINE) as file:
-            writer = csv.writer(file)
-            header: list[str] = ["room_no", "building", "capacity", "booked_hours"]
-            writer.writerow(header)
-            for room_no, room in cls.rooms.items():
-                writer.writerow([room_no, room.building, str(room.capacity), cls.join(room.booked_hours)])
+        while True:
+            try:
+                with open(Config.BOOKINGS_FILE, "w", newline=Config.NEWLINE) as file:
+                    writer = csv.writer(file)
+                    header: list[str] = ["room_no", "building", "capacity", "booked_hours"]
+                    writer.writerow(header)
+                    for room_no, room in cls.rooms.items():
+                        writer.writerow([room_no, room.building, str(room.capacity), cls.join(room.booked_hours)])
+            except FileNotFoundError:
+                print(f'Error: {Config.BOOKINGS_FILE} not found')
+            except PermissionError:
+                print(f'Error: Lacking permission to write to {Config.BOOKINGS_FILE}')
+            except (ValueError, csv.Error, KeyError):
+                print(f'Error: Data format error in {Config.BOOKINGS_FILE}')
+            except (IOError, Exception):
+                print(f'Error: Problem loading {Config.BOOKINGS_FILE}')
+            finally:
+                choice: str = input("Press ENTER to abort...\nEnter text to retry: ")
+                if choice == "":
+                    Menu.running = False
+                else:
+                    continue
 
     @classmethod
     def create(cls, room_no: str, building: str, capacity: int) -> bool:
