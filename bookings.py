@@ -9,21 +9,21 @@ class Config:
     BOOKINGS_FILE: ClassVar[str] = os.path.join(os.path.dirname(__file__), "data", "bookings_final_state.csv")
     NEWLINE: ClassVar[str] = ""
     DELIMITER: ClassVar[str] = ","
-    LIST_DELIMITER: ClassVar[str] = "|"
+    LIST_DELIMITER: ClassVar[str] = ";"
 
 
 class Room:
 
     rooms: ClassVar[dict[str, Room]] = {}
 
-    def __init__(self, room_no: str, building: str, capacity: int, booked_hours: tuple[bool, ...] | None = None) -> None:
+    def __init__(self, room_no: str, building: str, capacity: int, booked_hours: list[bool] | None = None) -> None:
         self.room_no: str = room_no
         self.building: str = building
         self.capacity: int = capacity
         if booked_hours:
-            self.booked_hours: tuple[bool, ...] = booked_hours
+            self.booked_hours: list[bool] = booked_hours
         else:
-            self.booked_hours: tuple[bool, ...] = ()
+            self.booked_hours: list[bool] = []
 
     @classmethod
     def load(cls) -> None:
@@ -48,6 +48,29 @@ class Room:
             return True
         else:
             return False
+        
+    @classmethod
+    def view(cls, room_no: str) -> str:
+        out: str = ""
+        room: Room = cls.rooms[room_no]
+        out += "Room Number => " + room.room_no + "\n"
+        out += "Building => " + room.building + "\n\n"
+        out += "Bookings:\n"
+        for i in range(len(room.booked_hours)):
+            out += str(i) + ":00 - " + str(i + 1) + ":00 => " + ("Booked" if room.booked_hours[i] else "Available") + "\n"
+        return out
+
+    @classmethod
+    def book(cls, room_no: str, hour: int) -> bool:
+        if cls.rooms[room_no] in cls.by_hour(hour):
+            cls.rooms[room_no].booked_hours[hour] = True
+            return True
+        else:
+            return False
+        
+    @classmethod
+    def exists(cls, room_no: str) -> bool:
+        return room_no in cls.rooms
 
     @classmethod
     def by_building(cls, building: str) -> set[Room]:
@@ -74,11 +97,11 @@ class Room:
         return rooms
 
     @staticmethod
-    def split(booked_hours: str) -> tuple[bool, ...]:
-        return tuple([bool(item) for item in booked_hours.split(Config.LIST_DELIMITER)])
+    def split(booked_hours: str) -> list[bool]:
+        return [bool(item) for item in booked_hours.split(Config.LIST_DELIMITER)]
     
     @staticmethod
-    def join(booked_hours: tuple[bool, ...]) -> str:
+    def join(booked_hours: list[bool]) -> str:
         out: str = ""
         for i in range(len(booked_hours)):
             if i != 0:
