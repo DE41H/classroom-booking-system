@@ -83,9 +83,6 @@ class Menu:
             4: self.find,
             0: self.exit
         }
-        
-    def __repr__(self) -> str:
-        return str(int(self.running))
 
     def clear(self) -> None:
         if os.name == "nt":
@@ -145,93 +142,50 @@ class Menu:
                 raise RoomAlreadyExistsError(room_no)
             building: str = input("Enter Building: ")
             capacity: int = self.get_int("Enter Capacity: ")
-            Room.create(room_no, building, int(capacity))
+            Room.create(room_no, building, capacity)
         except RoomAlreadyExistsError as err:
             print(err)
             sleep(Config.DELAY)
 
     def find(self):
-        while True:
-            try:
-                self.clear()
-                print("\n============= [ FIND ROOM ] =============\n")
-                options: dict[int, str] = {
-                    1: "Search by building",
-                    2: "Search by capacity",
-                    3: "Search by hour",
-                    0: "Return" 
-                }
-                for option in options:
-                    print(f'[{option}] {options[option]}')
-                choice: str = input("\nEnter Option Number: ")
-                if not choice.isdigit():
-                    raise NaN(choice)
-                option: int = int(choice)
-                if option not in options:
-                    raise NotAnOption(choice)
-                match option:
-                    case 1:
-                        building: str = input("Enter Building: ")
-                        rooms: set[Room] = Room.by_building(building)
-                        if len(rooms):
-                            print(f'Rooms available in {building}: {rooms}')
-                        else:
-                            print(f'No rooms available in {building}')
-                    case 2:
-                        while True:
-                            try:
-                                capacity: str = input("Enter required Capacity: ")
-                                if not capacity.isdigit():
-                                    raise NaN(capacity)
-                                rooms: set[Room] = Room.by_capacity(int(capacity))
-                                if len(rooms):
-                                    print(f'Rooms available with capacity of {rooms}: {rooms}')
-                                else:
-                                    print(f'No rooms available with capacity of {capacity}')
-                            except RoomAlreadyExistsError as err:
-                                print(err)
-                                sleep(Config.DELAY)
-                            finally:
-                                choice: str = input("Press ENTER to abort...\nEnter text to retry: ")
-                                if choice == "":
-                                    break
-                                else:
-                                    continue
-                    case 3:
-                        while True:
-                            try:
-                                choice: str = input("Enter hour: ")
-                                if not choice.isdigit():
-                                    raise NaN(choice)
-                                hour: int = int(choice)
-                                print(Room.display_hours())
-                                rooms: set[Room] = Room.by_hour(hour)
-                                if len(rooms):
-                                    print(f'Rooms available from {hour}:00 to {hour + 1}:00: {rooms}')
-                                else:
-                                    print(f'No rooms available with from {hour}:00 to {hour + 1}:00')
-                            except NaN as err:
-                                print(err)
-                                sleep(Config.DELAY)
-                            finally:
-                                choice: str = input("Press ENTER to abort...\nEnter text to retry: ")
-                                if choice == "":
-                                    break
-                                else:
-                                    continue
-                    case 0:
-                        break
-                    case _:
-                        pass
-            except (NaN, NotAnOption) as err:
-                print(err)
-                sleep(Config.DELAY)
-            finally:
-                choice: str = input("Press ENTER to abort...\nEnter text to retry: ")
-                if choice == "":
-                    break
+        self.clear()
+        print("\n============= [ FIND ROOM ] =============\n")
+        options: dict[int, str] = {
+            1: "Search by building",
+            2: "Search by capacity",
+            3: "Search by hour",
+            0: "Return" 
+        }
+        for item in options:
+            print(f'[{item}] {options[item]}')
+        option: int = int(self.get_option("\nEnter Option Number: ", set(str(item) for item in options.keys())))
+        match option:
+            case 1:
+                building: str = input("Enter Building: ")
+                rooms: set[Room] = Room.by_building(building)
+                if len(rooms):
+                    print(f'Rooms available in {building}: {rooms}')
                 else:
-                    continue
+                    print(f'No rooms available in {building}')
+            case 2:
+                capacity: int = self.get_int("Enter required capacity: ")
+                rooms: set[Room] = Room.by_capacity(capacity)
+                if len(rooms):
+                    print(f'Rooms available with capacity of {rooms}: {rooms}')
+                else:
+                    print(f'No rooms available with capacity of {capacity}')
+            case 3:
+                hour: int = int(self.get_option("Enter hour: ", set([str(item) for item in range(24)])))
+                print(Room.display_hours())
+                rooms: set[Room] = Room.by_hour(hour)
+                if len(rooms):
+                    print(f'Rooms available from {hour}:00 to {hour + 1}:00: {rooms}')
+                else:
+                    print(f'No rooms available with from {hour}:00 to {hour + 1}:00')
+            case 0:
+                pass
+            case _:
+                pass
 
     @staticmethod
     def get_int(prompt: str) -> int:
