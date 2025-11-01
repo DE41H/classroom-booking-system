@@ -126,12 +126,12 @@ class Menu:
             hour: int = int(self.get_option("Enter booking hour", set(str(item) for item in range(24))))
             booked: bool = Room.book(room_no, hour)
             if booked:
-                return
+                print(f'Room {room_no} has been booked from {hour}:00 to {hour + 1}:00')
             else:
                 raise TimeslotAlreadyBookedError(room_no, hour)
         except (RoomNotFoundError, TimeslotAlreadyBookedError) as err:
             print(err)
-            sleep(Config.DELAY)
+        sleep(Config.DELAY)
                 
     def create(self):
         try:
@@ -143,9 +143,10 @@ class Menu:
             building: str = input("Enter Building: ")
             capacity: int = self.get_int("Enter Capacity: ")
             Room.create(room_no, building, capacity)
+            print(f'Room with the following details has been created:\nRoom No.: {room_no}\nBuilding: {building}\nCapacity: {capacity}')
         except RoomAlreadyExistsError as err:
             print(err)
-            sleep(Config.DELAY)
+        sleep(Config.DELAY)
 
     def find(self):
         self.clear()
