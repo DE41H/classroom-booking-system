@@ -122,7 +122,7 @@ class Menu:
             room_no: str = input("Enter Room Number: ")
             if not Room.exists(room_no):
                 raise RoomNotFoundError(room_no)
-            print(Room.display_hours())
+            print(Room.display_hours(Room.rooms[room_no].booked_hours))
             hour: int = int(self.get_option("Enter booking hour", set(str(item) for item in range(24))))
             booked: bool = Room.book(room_no, hour)
             if booked:
@@ -164,28 +164,36 @@ class Menu:
                 building: str = input("Enter Building: ")
                 rooms: set[Room] = Room.by_building(building)
                 if len(rooms):
-                    print(f'Rooms available in {building}: {rooms}')
+                    print(f'Rooms available in {building}: {self.format(rooms)}')
                 else:
                     print(f'No rooms available in {building}')
             case 2:
                 capacity: int = self.get_int("Enter required capacity: ")
                 rooms: set[Room] = Room.by_capacity(capacity)
                 if len(rooms):
-                    print(f'Rooms available with capacity of {rooms}: {rooms}')
+                    print(f'Rooms available with capacity of {capacity}: {self.format(rooms)}')
                 else:
                     print(f'No rooms available with capacity of {capacity}')
             case 3:
-                hour: int = int(self.get_option("Enter hour: ", set([str(item) for item in range(24)])))
                 print(Room.display_hours())
+                hour: int = int(self.get_option("Enter hour: ", set([str(item) for item in range(24)])))
                 rooms: set[Room] = Room.by_hour(hour)
                 if len(rooms):
-                    print(f'Rooms available from {hour}:00 to {hour + 1}:00: {rooms}')
+                    print(f'Rooms available from {hour}:00 to {hour + 1}:00: {self.format(rooms)}')
                 else:
                     print(f'No rooms available with from {hour}:00 to {hour + 1}:00')
             case 0:
-                pass
+                return
             case _:
                 pass
+        input("Press ENTER to continue...")
+
+    @staticmethod
+    def format(rooms: set[Room]) -> str:
+        room_nos: list[str] = []
+        for room in rooms:
+            room_nos.append(room.room_no)
+        return ", ".join(room_nos)
 
     @staticmethod
     def get_int(prompt: str) -> int:
@@ -224,42 +232,20 @@ class Room:
 
     @classmethod
     def load(cls) -> None:
-        try:
-            with open(Config.BOOKINGS_FILE, "r", newline=Config.NEWLINE) as file:
-                reader = csv.DictReader(file, delimiter=Config.DELIMITER)
-                for row in reader:
-                    cls.rooms[row["room_no"]] = Room(row["room_no"], row["building"], int(row["capacity"]), cls.split(row["booked_hours"]))
-            return
-        except FileNotFoundError:
-            print(f'Error: {Config.BOOKINGS_FILE} not found')
-        except (ValueError, csv.Error, KeyError):
-            print(f'Error: Data format error in {Config.BOOKINGS_FILE}')
-        except (IOError, Exception):
-            print(f'Error: Problem loading {Config.BOOKINGS_FILE}')
-        finally:
-            Menu.running = False
+        with open(Config.BOOKINGS_FILE, "r", newline=Config.NEWLINE) as file:
+            reader = csv.DictReader(file, delimiter=Config.DELIMITER)
+            for row in reader:
+                cls.rooms[row["room_no"]] = Room(row["room_no"], row["building"], int(row["capacity"]), cls.split(row["booked_hours"]))
 
     @classmethod
     def save(cls) -> None:
-        try:
-            os.makedirs(os.path.dirname(Config.BOOKINGS_FILE), exist_ok=True)
-            with open(Config.BOOKINGS_FILE, "w", newline=Config.NEWLINE) as file:
-                writer = csv.writer(file)
-                header: list[str] = ["room_no", "building", "capacity", "booked_hours"]
-                writer.writerow(header)
-                for room_no, room in cls.rooms.items():
-                    writer.writerow([room_no, room.building, str(room.capacity), cls.join(room.booked_hours)])
-            return
-        except FileNotFoundError:
-            print(f'Error: {Config.BOOKINGS_FILE} not found')
-        except PermissionError:
-            print(f'Error: Lacking permission to write to {Config.BOOKINGS_FILE}')
-        except (ValueError, csv.Error, KeyError):
-            print(f'Error: Data format error in {Config.BOOKINGS_FILE}')
-        except (IOError, Exception):
-            print(f'Error: Problem loading {Config.BOOKINGS_FILE}')
-        finally:
-            Menu.running = False
+        os.makedirs(os.path.dirname(Config.BOOKINGS_FILE), exist_ok=True)
+        with open(Config.BOOKINGS_FILE, "w", newline=Config.NEWLINE) as file:
+            writer = csv.writer(file)
+            header: list[str] = ["room_no", "building", "capacity", "booked_hours"]
+            writer.writerow(header)
+            for room_no, room in cls.rooms.items():
+                writer.writerow([room_no, room.building, str(room.capacity), cls.join(room.booked_hours)])
 
     @classmethod
     def create(cls, room_no: str, building: str, capacity: int) -> bool:
@@ -328,17 +314,30 @@ class Room:
     def display_hours(booked_hours: list[bool] | None = None) -> str:
         out: str = ""
         for i in range(24):
-            factor: str = ""
+            status: str = ""
             if booked_hours:
-                factor = f' => {"Booked" if booked_hours[i] else "Available"}'
+                status = f'{"Booked" if booked_hours[i] else "Available"}'
             else:
-                factor = ""
-            out += f'[{i}] {i}:00 to {i + 1}:00 => ' + factor + "\n"
+                status = ""
+            out += f'[{i}] {i}:00 to {i + 1}:00 => ' + status + "\n"
         return out
 
 
 def main():
-    Room.load()
+    try:
+        Room.load()
+    except FileNotFoundError:
+        print(f'Error: {Config.BOOKINGS_FILE} not found')
+        Menu.running = False
+    except PermissionError:
+        print(f'Error: Lacking permission to write to {Config.BOOKINGS_FILE}')
+        Menu.running = False
+    except (ValueError, csv.Error, KeyError):
+        print(f'Error: Data format error in {Config.BOOKINGS_FILE}')
+        Menu.running = False
+    except (IOError, Exception):
+        print(f'Error: Problem loading {Config.BOOKINGS_FILE}')
+        Menu.running = False
     menu: Menu = Menu()
     menu.menu()
 
